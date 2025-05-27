@@ -34,6 +34,7 @@ async function run() {
 
 
     const apartmentCollection = client.db('apartmentsDB').collection('apartments');
+    const couponCollection = client.db('apartmentDB').collection('coupons');
     await apartmentCollection.deleteMany({});
     await apartmentCollection.insertMany(apartments);
 
@@ -49,6 +50,17 @@ async function run() {
       }
     });
 
+    app.get('/coupons', async(req, res)=>{
+        try{
+            const allCoupons = await couponCollection.find().toArray();
+            res.send(allCoupons);
+        }catch{
+            console.error('Error fetching coupons' ,error);
+            res.status(500).send('Internal Server Error');
+        }
+
+    })
+
 
     //Add new data
     app.post('/apartments', async (req, res) => {
@@ -61,6 +73,17 @@ async function run() {
         res.status(500).send('Internal Server Error');
       }
     });
+    app.post('/coupons', async(req, res)=>{
+        try{
+            const newCoupon = req.body;
+            const result = await couponCollection.insertOne(newCoupon);
+            res.status(201).send(result);
+        }catch{
+            console.error('Error Adding coupons', error);
+            res.status(500).send('Internal Server Error')
+        }
+    })
+
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
