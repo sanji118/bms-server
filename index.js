@@ -68,6 +68,7 @@ async function run() {
 
     const apartmentCollection = client.db('apartmentsDB').collection('apartments');
     const couponCollection = client.db('apartmentsDB').collection('coupons');
+    const userCollection = client.db('apartmentsDB').collection('users');
     await apartmentCollection.deleteMany({});
     await apartmentCollection.insertMany(apartments);
     await couponCollection.deleteMany({});
@@ -124,6 +125,74 @@ async function run() {
             res.status(500).send('Internal Server Error')
         }
     })
+
+
+    //users 
+    app.post('/users', async (req, res) => {
+      try {
+        const { name, email, photo, role } = req.body;
+
+        if (!email) {
+          return res.status(400).send({ error: 'Email is required' });
+        }
+
+        
+        const filter = { email };
+        const updateDoc = {
+          $set: {
+            name,
+            photo,
+            role: role || 'user' 
+          }
+        };
+        const options = { upsert: true, returnDocument: 'after' };
+
+        const result = await userCollection.findOneAndUpdate(filter, updateDoc, options);
+
+        res.status(200).send(result.value);
+      } catch (error) {
+        console.error('Error saving user:', error);
+        res.status(500).send({ error: 'Failed to save user' });
+      }
+    });
+    
+
+    app.post('/users', async (req, res) => {
+    try {
+        const { name, email, photo, role } = req.body;
+        if (!email) return res.status(400).send({ error: 'Email is required' });
+
+        const filter = { email };
+        const updateDoc = {
+        $set: {
+            name,
+            photo,
+            role: role || 'user',
+        }
+        };
+        const options = { upsert: true, returnDocument: 'after' };
+        const result = await userCollection.findOneAndUpdate(filter, updateDoc, options);
+        res.status(200).send(result.value);
+    } catch (error) {
+        console.error('Error saving user:', error);
+        res.status(500).send({ error: 'Failed to save user' });
+    }
+    });
+
+    //getting email route
+    app.get('/users/:email', async (req, res) => {
+        try {
+            const email = req.params.email;
+            const user = await userCollection.findOne({ email });
+            if (!user) return res.status(404).send({ error: 'User not found' });
+            res.send(user);
+        } catch (error) {
+            console.error('Error fetching user:', error);
+            res.status(500).send({ error: 'Internal Server Error' });
+        }
+    });
+
+
 
   } finally {
     // Ensures that the client will close when you finish/error
