@@ -1,0 +1,58 @@
+[
+  {
+    "image": "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2",
+    "floor_no": "3",
+    "block_name": "A",
+    "apartment_no": "301",
+    "rent": 1200
+  },
+  {
+    "image": "https://images.unsplash.com/photo-1512917774080-9991f1c4c750",
+    "floor_no": "1",
+    "block_name": "B",
+    "apartment_no": "102",
+    "rent": 1500
+  },
+  {
+    "image": "https://images.unsplash.com/photo-1493809842364-78817add7ffb",
+    "floor_no": "5",
+    "block_name": "C",
+    "apartment_no": "503",
+    "rent": 1800
+  },
+  {
+    "image": "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688",
+    "floor_no": "2",
+    "block_name": "A",
+    "apartment_no": "205",
+    "rent": 1350
+  },
+  {
+    "image": "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267",
+    "floor_no": "4",
+    "block_name": "B",
+    "apartment_no": "404",
+    "rent": 1600
+  },
+  {
+    "image": "https://images.unsplash.com/photo-1484154218962-a197022b5858",
+    "floor_no": "6",
+    "block_name": "D",
+    "apartment_no": "601",
+    "rent": 2000
+  },
+  {
+    "image": "https://images.unsplash.com/photo-1536376072261-38c75010e6c9",
+    "floor_no": "1",
+    "block_name": "C",
+    "apartment_no": "107",
+    "rent": 1250
+  },
+  {
+    "image": "https://images.unsplash.com/photo-1554469384-e58fac16e23a",
+    "floor_no": "3",
+    "block_name": "D",
+    "apartment_no": "302",
+    "rent": 1450
+  }
+]
