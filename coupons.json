@@ -1,0 +1,98 @@
+[
+  {
+    "id": "CPN1001",
+    "code": "WELCOME10",
+    "discount": 10,
+    "type": "percentage",
+    "description": "10% off your first month's rent",
+    "validFrom": "2023-06-01",
+    "validUntil": "2023-12-31",
+    "minRent": 1000,
+    "applicableFor": ["new-members"],
+    "status": "active"
+  },
+  {
+    "id": "CPN1002",
+    "code": "SUMMER25",
+    "discount": 25,
+    "type": "percentage",
+    "description": "Summer special - 25% off first payment",
+    "validFrom": "2023-06-01",
+    "validUntil": "2023-08-31",
+    "minLease": 6,
+    "applicableFor": ["all-members"],
+    "status": "active"
+  },
+  {
+    "id": "CPN1003",
+    "code": "REFER15",
+    "discount": 15,
+    "type": "percentage",
+    "description": "15% off when you refer a friend",
+    "validFrom": "2023-01-01",
+    "validUntil": "2023-12-31",
+    "applicableFor": ["existing-members"],
+    "terms": "Both parties must sign lease agreement",
+    "status": "active"
+  },
+  {
+    "id": "CPN1004",
+    "code": "LOYALTY50",
+    "discount": 50,
+    "type": "fixed",
+    "description": "$50 off for loyal members",
+    "validFrom": "2023-05-01",
+    "validUntil": "2023-11-30",
+    "minRent": 1500,
+    "applicableFor": ["existing-members", "renewals"],
+    "status": "active"
+  },
+  {
+    "id": "CPN1005",
+    "code": "STUDENT20",
+    "discount": 20,
+    "type": "percentage",
+    "description": "20% discount for students",
+    "validFrom": "2023-09-01",
+    "validUntil": "2024-05-31",
+    "applicableFor": ["students"],
+    "requirements": "Valid student ID required",
+    "status": "active"
+  },
+  {
+    "id": "CPN1006",
+    "code": "FAMILY30",
+    "discount": 30,
+    "type": "percentage",
+    "description": "30% off for family apartments",
+    "validFrom": "2023-07-01",
+    "validUntil": "2023-12-31",
+    "minBedrooms": 2,
+    "applicableFor": ["families"],
+    "status": "active"
+  },
+  {
+    "id": "CPN1007",
+    "code": "EARLYBIRD200",
+    "discount": 200,
+    "type": "fixed",
+    "description": "$200 off for early lease signing",
+    "validFrom": "2023-04-01",
+    "validUntil": "2023-10-31",
+    "applicableFor": ["new-members"],
+    "terms": "Must sign lease 60 days before move-in",
+    "status": "active"
+  },
+  {
+    "id": "CPN1008",
+    "code": "RENEW15",
+    "discount": 15,
+    "type": "percentage",
+    "description": "15% discount on lease renewal",
+    "validFrom": "2023-01-01",
+    "validUntil": "2023-12-31",
+    "applicableFor": ["renewals"],
+    "minLeaseDuration": 12,
+    "status": "active"
+  }
+]

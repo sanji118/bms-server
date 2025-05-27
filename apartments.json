@@ -4,55 +4,95 @@
     "floor_no": "3",
     "block_name": "A",
     "apartment_no": "301",
-    "rent": 1200
+    "rent": 1200,
+    "location": {
+      "address": "123 Gulshan Avenue, Dhaka",
+      "lat": 23.7808875,
+      "lng": 90.4169257
+    }
   },
   {
     "image": "https://images.unsplash.com/photo-1512917774080-9991f1c4c750",
     "floor_no": "1",
     "block_name": "B",
     "apartment_no": "102",
-    "rent": 1500
+    "rent": 1500,
+    "location": {
+      "address": "45 Dhanmondi Road 7, Dhaka",
+      "lat": 23.746466,
+      "lng": 90.376015
+    }
   },
   {
     "image": "https://images.unsplash.com/photo-1493809842364-78817add7ffb",
     "floor_no": "5",
     "block_name": "C",
     "apartment_no": "503",
-    "rent": 1800
+    "rent": 1800,
+    "location": {
+      "address": "77 Banani, Dhaka",
+      "lat": 23.7936,
+      "lng": 90.4043
+    }
   },
   {
     "image": "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688",
     "floor_no": "2",
     "block_name": "A",
     "apartment_no": "205",
-    "rent": 1350
+    "rent": 1350,
+    "location": {
+      "address": "10 Uttara Sector 3, Dhaka",
+      "lat": 23.8738,
+      "lng": 90.3964
+    }
   },
   {
     "image": "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267",
     "floor_no": "4",
     "block_name": "B",
     "apartment_no": "404",
-    "rent": 1600
+    "rent": 1600,
+    "location": {
+      "address": "33 Mirpur 10, Dhaka",
+      "lat": 23.8066,
+      "lng": 90.3688
+    }
   },
   {
     "image": "https://images.unsplash.com/photo-1484154218962-a197022b5858",
     "floor_no": "6",
     "block_name": "D",
     "apartment_no": "601",
-    "rent": 2000
+    "rent": 2000,
+    "location": {
+      "address": "88 Bashundhara R/A, Dhaka",
+      "lat": 23.8151,
+      "lng": 90.4282
+    }
   },
   {
     "image": "https://images.unsplash.com/photo-1536376072261-38c75010e6c9",
     "floor_no": "1",
     "block_name": "C",
     "apartment_no": "107",
-    "rent": 1250
+    "rent": 1250,
+    "location": {
+      "address": "22 Mohammadpur, Dhaka",
+      "lat": 23.7681,
+      "lng": 90.3572
+    }
   },
   {
     "image": "https://images.unsplash.com/photo-1554469384-e58fac16e23a",
     "floor_no": "3",
     "block_name": "D",
     "apartment_no": "302",
-    "rent": 1450
+    "rent": 1450,
+    "location": {
+      "address": "15 Badda Link Road, Dhaka",
+      "lat": 23.7804,
+      "lng": 90.4257
+    }
   }
 ]
