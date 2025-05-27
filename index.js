@@ -38,11 +38,29 @@ async function run() {
     await apartmentCollection.insertMany(apartments);
 
 
-    app.get('/apartments', async(req, res)=>{
+    //Get all data
+    app.get('/apartments', async (req, res) => {
+      try {
+        const allApartments = await apartmentCollection.find().toArray();
+        res.send(allApartments);
+      } catch (error) {
+        console.error('Error fetching apartments:', error);
+        res.status(500).send('Internal Server Error');
+      }
+    });
+
+
+    //Add new data
+    app.post('/apartments', async (req, res) => {
+      try {
         const newApartment = req.body;
         const result = await apartmentCollection.insertOne(newApartment);
-        res.send(result);
-    })
+        res.status(201).send(result);
+      } catch (error) {
+        console.error('Error adding apartment:', error);
+        res.status(500).send('Internal Server Error');
+      }
+    });
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
