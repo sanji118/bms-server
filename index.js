@@ -241,6 +241,49 @@ async function run() {
                 res.status(500).send({ error: 'Internal Server Error' });
             }
         });
+        
+        app.put('/announcements/:id', verifyJWT, verifyRole('admin'), async (req, res) => {
+            try {
+                const { id } = req.params;
+                const updateData = req.body;
+                
+                // You might want to add validation here
+                
+                const result = await announcementCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    { $set: updateData }
+                );
+                
+                if (result.matchedCount === 0) {
+                    return res.status(404).send({ error: 'Announcement not found' });
+                }
+                
+                res.send({ success: true, message: 'Announcement updated' });
+            } catch (error) {
+                console.error('Error updating announcement:', error);
+                res.status(500).send({ error: 'Internal Server Error' });
+            }
+        });
+
+        
+        app.delete('/announcements/:id', verifyJWT, verifyRole('admin'), async (req, res) => {
+            try {
+                const { id } = req.params;
+                
+                const result = await announcementCollection.deleteOne(
+                    { _id: new ObjectId(id) }
+                );
+                
+                if (result.deletedCount === 0) {
+                    return res.status(404).send({ error: 'Announcement not found' });
+                }
+                
+                res.send({ success: true, message: 'Announcement deleted' });
+            } catch (error) {
+                console.error('Error deleting announcement:', error);
+                res.status(500).send({ error: 'Internal Server Error' });
+            }
+        });
 
         // ==================== Agreement Routes ====================
         app.get('/agreements', verifyJWT, async (req, res) => {
