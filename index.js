@@ -199,7 +199,7 @@ async function run() {
         app.patch('/coupons/:id', verifyJWT, verifyRole('admin'), async (req, res) => {
             try {
                 const id = req.params.id;
-                const { isActive } = req.body;
+                const { status } = req.body;
                 
                 if (!ObjectId.isValid(id)) {
                     return res.status(400).send({ error: 'Invalid coupon ID' });
@@ -207,14 +207,17 @@ async function run() {
 
                 const result = await couponCollection.updateOne(
                     { _id: new ObjectId(id) },
-                    { $set: { isActive } }
+                    { $set: { status } }
                 );
 
                 if (result.modifiedCount === 0) {
                     return res.status(404).send({ error: 'Coupon not found' });
                 }
 
-                res.send({ message: 'Coupon updated successfully' });
+                res.send({ 
+                message: 'Coupon status updated successfully',
+                updatedCoupon: await couponCollection.findOne({ _id: new ObjectId(id) })
+            });
             } catch (error) {
                 console.error('Error updating coupon:', error);
                 res.status(500).send({ error: 'Internal Server Error' });
@@ -225,15 +228,11 @@ async function run() {
         app.delete('/coupons/:id', verifyJWT, verifyRole('admin'), async (req, res) => {
             try {
                 const id = req.params.id;
-                
                 if (!ObjectId.isValid(id)) {
                     return res.status(400).send({ error: 'Invalid coupon ID' });
                 }
 
-                const result = await couponCollection.deleteOne({ 
-                    _id: new ObjectId(id) 
-                });
-
+                const result = await couponCollection.deleteOne({ _id: new ObjectId(id) });
                 if (result.deletedCount === 0) {
                     return res.status(404).send({ error: 'Coupon not found' });
                 }
