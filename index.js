@@ -13,10 +13,6 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Sample data imports
-const apartments = require('./apartments.json');
-const coupons = require('./coupons.json');
-
 // MongoDB Connection
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.95qfhdq.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 const client = new MongoClient(uri, {
@@ -29,15 +25,15 @@ const client = new MongoClient(uri, {
 
 // JWT Verification Middleware
 const verifyJWT = (req, res, next) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).send({ error: 'Unauthorized - No token provided' });
-
-    const token = authHeader.split(' ')[1];
-    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
-        if (err) return res.status(403).send({ error: 'Forbidden - Invalid token' });
-        req.user = decoded;
-        next();
-    });
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).send('Unauthorized');
+  
+  const token = authHeader.split(' ')[1];
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if (err) return res.status(403).send('Forbidden');
+    req.user = decoded;
+    next();
+  });
 };
 
 // Role Verification Middleware
@@ -50,7 +46,6 @@ const verifyRole = (requiredRole) => {
     };
 };
 
-// Database Connection and Routes
 async function run() {
     try {
         await client.connect();
@@ -64,30 +59,29 @@ async function run() {
         const agreementCollection = db.collection('agreements');
         const paymentCollection = db.collection('payments');
 
-        // Initialize sample data if collections are empty
-        const apartmentCount = await apartmentCollection.countDocuments();
-        if (apartmentCount === 0) {
-            await apartmentCollection.insertMany(apartments);
-        }
-
-        const couponCount = await couponCollection.countDocuments();
-        if (couponCount === 0) {
-            await couponCollection.insertMany(coupons);
-        }
-
         // ==================== Authentication Routes ====================
         app.post('/jwt', async (req, res) => {
             try {
-                const user = req.body;
-                if (!user.email) {
-                    return res.status(400).send({ error: 'Email is required' });
+                const user = await userCollection.findOne({ email: req.body.email });
+                if (!user) {
+                    return res.status(404).send({ error: 'User not found' });
                 }
-
-                const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
-                res.send({ token });
+                
+                const userData = {
+                    email: user.email,
+                    role: user.role
+                }
+                
+                const accessToken = jwt.sign(
+                    userData,
+                    process.env.ACCESS_TOKEN_SECRET,
+                    {expiresIn: '1d'}
+                )
+                
+                res.json({token: accessToken, role: userData.role})
             } catch (error) {
                 console.error('Error generating JWT:', error);
-                res.status(500).send({ error: 'Internal server error' });
+                res.status(400).json({ error: 'Failed to generate token' });
             }
         });
 
@@ -96,12 +90,8 @@ async function run() {
             try {
                 const { name, email, photo, role } = req.body;
                 
-                // Basic validation
                 if (!email || !email.includes('@')) {
                     return res.status(400).send({ error: 'Valid email is required' });
-                }
-                if (role && !['user', 'member', 'admin'].includes(role)) {
-                    return res.status(400).send({ error: 'Invalid role specified' });
                 }
 
                 const filter = { email };
@@ -113,10 +103,10 @@ async function run() {
                         createdAt: new Date()
                     }
                 };
-                const options = { upsert: true, returnDocument: 'after' };
+                const options = { upsert: true };
 
-                const result = await userCollection.findOneAndUpdate(filter, updateDoc, options);
-                res.status(200).send(result.value);
+                const result = await userCollection.updateOne(filter, updateDoc, options);
+                res.status(200).send(result);
             } catch (error) {
                 console.error('Error saving user:', error);
                 res.status(500).send({ error: 'Failed to save user' });
@@ -191,6 +181,42 @@ async function run() {
             }
         });
 
+        app.post('/coupons', verifyJWT, verifyRole('admin'), async (req, res) => {
+            try {
+                const coupon = req.body;
+                const result = await couponCollection.insertOne(coupon);
+                res.status(201).send(result);
+            } catch (error) {
+                console.error('Error creating coupon:', error);
+                res.status(500).send({ error: 'Internal Server Error' });
+            }
+        });
+
+        app.patch('/coupons/:id', verifyJWT, verifyRole('admin'), async (req, res) => {
+            try {
+                const id = req.params.id;
+                const { isActive } = req.body;
+                
+                if (!ObjectId.isValid(id)) {
+                    return res.status(400).send({ error: 'Invalid coupon ID' });
+                }
+
+                const result = await couponCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    { $set: { isActive } }
+                );
+
+                if (result.modifiedCount === 0) {
+                    return res.status(404).send({ error: 'Coupon not found' });
+                }
+
+                res.send({ message: 'Coupon updated successfully' });
+            } catch (error) {
+                console.error('Error updating coupon:', error);
+                res.status(500).send({ error: 'Internal Server Error' });
+            }
+        });
+
         // ==================== Announcement Routes ====================
         app.get('/announcements', async (req, res) => {
             try {
@@ -204,13 +230,161 @@ async function run() {
             }
         });
 
-        // ==================== Basic Admin Routes ====================
+        app.post('/announcements', verifyJWT, verifyRole('admin'), async (req, res) => {
+            try {
+                const announcement = req.body;
+                announcement.createdAt = new Date();
+                const result = await announcementCollection.insertOne(announcement);
+                res.status(201).send(result);
+            } catch (error) {
+                console.error('Error creating announcement:', error);
+                res.status(500).send({ error: 'Internal Server Error' });
+            }
+        });
+
+        // ==================== Agreement Routes ====================
+        app.get('/agreements', verifyJWT, async (req, res) => {
+            try {
+                const userEmail = req.user.email;
+                const agreements = await agreementCollection.find({ userEmail }).toArray();
+                res.send(agreements);
+            } catch (error) {
+                console.error('Error fetching agreements:', error);
+                res.status(500).send({ error: 'Internal Server Error' });
+            }
+        });
+
+        app.get('/agreements/requests', verifyJWT, verifyRole('admin'), async (req, res) => {
+            try {
+                const requests = await agreementCollection.find({ status: 'pending' }).toArray();
+                res.send(requests);
+            } catch (error) {
+                console.error('Error fetching agreement requests:', error);
+                res.status(500).send({ error: 'Internal Server Error' });
+            }
+        });
+
+        app.post('/agreements', verifyJWT, async (req, res) => {
+            try {
+                const agreement = req.body;
+                agreement.status = 'pending';
+                agreement.createdAt = new Date();
+                const result = await agreementCollection.insertOne(agreement);
+                res.status(201).send(result);
+            } catch (error) {
+                console.error('Error creating agreement:', error);
+                res.status(500).send({ error: 'Internal Server Error' });
+            }
+        });
+
+        app.patch('/agreements/:id', verifyJWT, verifyRole('admin'), async (req, res) => {
+            try {
+                const id = req.params.id;
+                const { status } = req.body;
+                
+                if (!ObjectId.isValid(id)) {
+                    return res.status(400).send({ error: 'Invalid agreement ID' });
+                }
+
+                const agreement = await agreementCollection.findOne({ _id: new ObjectId(id) });
+                if (!agreement) {
+                    return res.status(404).send({ error: 'Agreement not found' });
+                }
+
+                // Update agreement status
+                const result = await agreementCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    { $set: { status } }
+                );
+
+                // If accepted, update user role to member
+                if (status === 'accepted') {
+                    await userCollection.updateOne(
+                        { email: agreement.userEmail },
+                        { $set: { role: 'member' } }
+                    );
+                }
+
+                res.send({ message: 'Agreement updated successfully' });
+            } catch (error) {
+                console.error('Error updating agreement:', error);
+                res.status(500).send({ error: 'Internal Server Error' });
+            }
+        });
+
+        // ==================== Payment Routes ====================
+        app.get('/payments', verifyJWT, async (req, res) => {
+            try {
+                const userEmail = req.user.email;
+                const payments = await paymentCollection.find({ userEmail }).toArray();
+                res.send(payments);
+            } catch (error) {
+                console.error('Error fetching payments:', error);
+                res.status(500).send({ error: 'Internal Server Error' });
+            }
+        });
+
+        app.post('/payments', verifyJWT, async (req, res) => {
+            try {
+                const payment = req.body;
+                payment.createdAt = new Date();
+                payment.status = 'completed';
+                const result = await paymentCollection.insertOne(payment);
+                res.status(201).send(result);
+            } catch (error) {
+                console.error('Error creating payment:', error);
+                res.status(500).send({ error: 'Internal Server Error' });
+            }
+        });
+
+        // ==================== Admin Routes ====================
         app.get('/admin/users', verifyJWT, verifyRole('admin'), async (req, res) => {
             try {
                 const users = await userCollection.find().toArray();
                 res.send(users);
             } catch (error) {
                 console.error('Error fetching users:', error);
+                res.status(500).send({ error: 'Internal Server Error' });
+            }
+        });
+
+        app.patch('/admin/users/:email', verifyJWT, verifyRole('admin'), async (req, res) => {
+            try {
+                const email = req.params.email;
+                const { role } = req.body;
+
+                const result = await userCollection.updateOne(
+                    { email },
+                    { $set: { role } }
+                );
+
+                if (result.modifiedCount === 0) {
+                    return res.status(404).send({ error: 'User not found' });
+                }
+
+                res.send({ message: 'User role updated successfully' });
+            } catch (error) {
+                console.error('Error updating user:', error);
+                res.status(500).send({ error: 'Internal Server Error' });
+            }
+        });
+
+        app.get('/admin/stats', verifyJWT, verifyRole('admin'), async (req, res) => {
+            try {
+                const totalRooms = await apartmentCollection.countDocuments();
+                const availableRooms = await apartmentCollection.countDocuments({ status: 'available' });
+                const totalUsers = await userCollection.countDocuments({ role: 'user' });
+                const totalMembers = await userCollection.countDocuments({ role: 'member' });
+
+                res.send({
+                    totalRooms,
+                    availableRoomsPercentage: (availableRooms / totalRooms) * 100,
+                    occupiedRoomsPercentage: ((totalRooms - availableRooms) / totalRooms) * 100,
+                    totalUsers,
+                    totalMembers
+                });
+            } catch (error) {
+                console.error('Error fetching stats:', error);
                 res.status(500).send({ error: 'Internal Server Error' });
             }
         });
@@ -227,7 +401,6 @@ async function run() {
 
 run().catch(console.dir);
 
-// Start server
 app.listen(port, () => {
     console.log(`Building Management Server is running on port: ${port}`);
 });
