@@ -361,13 +361,13 @@ async function run() {
                     return res.status(404).send({ error: 'Agreement not found' });
                 }
 
-                // Update agreement status
+                
                 const result = await agreementCollection.updateOne(
                     { _id: new ObjectId(id) },
                     { $set: { status } }
                 );
 
-                // If accepted, update user role to member
+                
                 if (status === 'accepted') {
                     await userCollection.updateOne(
                         { email: agreement.userEmail },
@@ -385,8 +385,8 @@ async function run() {
         // ==================== Payment Routes ====================
         app.get('/payments', verifyJWT, async (req, res) => {
             try {
-                const memberEmail = req.user.email; // from JWT
-                const payments = await paymentCollection.find({ memberEmail }).toArray(); // fix this line
+                const memberEmail = req.user.email;
+                const payments = await paymentCollection.find({ memberEmail }).toArray();
                 res.send(payments);
             } catch (error) {
                 console.error('Error fetching payments:', error);
@@ -442,25 +442,47 @@ async function run() {
 
         app.get('/admin/stats', verifyJWT, verifyRole('admin'), async (req, res) => {
             try {
-                const totalRooms = await apartmentCollection.countDocuments();
-                const availableRooms = await apartmentCollection.countDocuments({ status: 'available' });
-                const totalUsers = await userCollection.countDocuments({ role: 'user' });
-                const totalMembers = await userCollection.countDocuments({ role: 'member' });
-
-                res.send({
+                const [
                     totalRooms,
-                    availableRoomsPercentage: (availableRooms / totalRooms) * 100,
-                    occupiedRoomsPercentage: ((totalRooms - availableRooms) / totalRooms) * 100,
+                    availableRooms,
                     totalUsers,
                     totalMembers
+                ] = await Promise.all([
+                    apartmentCollection.countDocuments(),
+                    apartmentCollection.countDocuments({ status: 'available' }),
+                    userCollection.countDocuments({ role: 'user' }),
+                    userCollection.countDocuments({ role: 'member' })
+                ]);
+
+                
+                const availablePercentage = totalRooms > 0 
+                    ? (availableRooms / totalRooms) * 100 
+                    : 0;
+                const occupiedPercentage = totalRooms > 0 
+                    ? ((totalRooms - availableRooms) / totalRooms) * 100 
+                    : 0;
+
+                res.send({
+                    success: true,
+                    data: {
+                        totalRooms,
+                        availableRoomsPercentage: availablePercentage,
+                        occupiedRoomsPercentage: occupiedPercentage,
+                        totalUsers,
+                        totalMembers
+                    }
                 });
             } catch (error) {
                 console.error('Error fetching stats:', error);
-                res.status(500).send({ error: 'Internal Server Error' });
+                res.status(500).send({ 
+                    success: false,
+                    error: 'Internal Server Error',
+                    message: 'Failed to retrieve admin statistics'
+                });
             }
         });
 
-        // Root route
+        
         app.get('/', (req, res) => {
             res.send('Building Management System server is running');
         });
