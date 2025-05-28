@@ -358,14 +358,15 @@ async function run() {
         // ==================== Payment Routes ====================
         app.get('/payments', verifyJWT, async (req, res) => {
             try {
-                const userEmail = req.user.email;
-                const payments = await paymentCollection.find({ userEmail }).toArray();
+                const memberEmail = req.user.email; // from JWT
+                const payments = await paymentCollection.find({ memberEmail }).toArray(); // fix this line
                 res.send(payments);
             } catch (error) {
                 console.error('Error fetching payments:', error);
                 res.status(500).send({ error: 'Internal Server Error' });
             }
         });
+
 
         app.post('/payments', verifyJWT, async (req, res) => {
             try {
