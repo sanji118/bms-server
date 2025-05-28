@@ -167,16 +167,20 @@ async function run() {
             }
         });
 
-        app.get('/coupons/:code', async (req, res) => {
+        app.get('/coupons/:id', async (req, res) => {
             try {
-                const code = req.params.code;
-                const coupon = await couponCollection.findOne({ code });
+                const id = req.params.id;
+                if (!ObjectId.isValid(id)) {
+                    return res.status(400).send({ error: 'Invalid apartment ID' });
+                }
+                
+                const coupon = await couponCollection.findOne({ _id: new ObjectId(id) });
                 if (!coupon) {
                     return res.status(404).send({ error: 'Coupon not found' });
                 }
                 res.send(coupon);
             } catch (error) {
-                console.error('Error fetching coupon:', error);
+                console.error('Error fetching Coupon:', error);
                 res.status(500).send({ error: 'Internal Server Error' });
             }
         });
@@ -213,6 +217,30 @@ async function run() {
                 res.send({ message: 'Coupon updated successfully' });
             } catch (error) {
                 console.error('Error updating coupon:', error);
+                res.status(500).send({ error: 'Internal Server Error' });
+            }
+        });
+
+
+        app.delete('/coupons/:id', verifyJWT, verifyRole('admin'), async (req, res) => {
+            try {
+                const id = req.params.id;
+                
+                if (!ObjectId.isValid(id)) {
+                    return res.status(400).send({ error: 'Invalid coupon ID' });
+                }
+
+                const result = await couponCollection.deleteOne({ 
+                    _id: new ObjectId(id) 
+                });
+
+                if (result.deletedCount === 0) {
+                    return res.status(404).send({ error: 'Coupon not found' });
+                }
+
+                res.send({ message: 'Coupon deleted successfully' });
+            } catch (error) {
+                console.error('Error deleting coupon:', error);
                 res.status(500).send({ error: 'Internal Server Error' });
             }
         });
