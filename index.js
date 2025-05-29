@@ -1,499 +1,560 @@
 const express = require('express');
+const app = express();
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
-const app = express();
 require('dotenv').config();
-const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+
+
 const port = process.env.PORT || 5000;
 
-// Middleware
-app.use(cors({
-    origin: ['http://localhost:5173'],
-    credentials: true
-}));
+// middleware
+app.use(cors());
 app.use(express.json());
 
-// MongoDB Connection
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.95qfhdq.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+
+const coupons = require('./coupons.json')
+const apartments = require('./apartments.json')
+
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.swu9d.mongodb.net/?retryWrites=true&w=majority`;
+
+// Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
-    serverApi: {
-        version: ServerApiVersion.v1,
-        strict: true,
-        deprecationErrors: true,
-    }
+  serverApi: {
+    version: ServerApiVersion.v1,
+    strict: true,
+    deprecationErrors: true,
+  }
 });
 
-// JWT Verification Middleware
-const verifyJWT = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) return res.status(401).send('Unauthorized');
-  
-  const token = authHeader.split(' ')[1];
-  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
-    if (err) return res.status(403).send('Forbidden');
-    req.user = decoded;
-    next();
-  });
-};
-
-// Role Verification Middleware
-const verifyRole = (requiredRole) => {
-    return (req, res, next) => {
-        if (req.user.role !== requiredRole) {
-            return res.status(403).send({ error: 'Access denied - Insufficient permissions' });
-        }
-        next();
-    };
-};
-
 async function run() {
-    try {
-        await client.connect();
-        console.log("Successfully connected to MongoDB!");
+  try {
+    // Connect the client to the server
+    // await client.connect();
 
-        const db = client.db('apartmentsDB');
-        const apartmentCollection = db.collection('apartments');
-        const couponCollection = db.collection('coupons');
-        const userCollection = db.collection('users');
-        const announcementCollection = db.collection('announcements');
-        const agreementCollection = db.collection('agreements');
-        const paymentCollection = db.collection('payments');
-
-        // ==================== Authentication Routes ====================
-        app.post('/jwt', async (req, res) => {
-            try {
-                const user = await userCollection.findOne({ email: req.body.email });
-                if (!user) {
-                    return res.status(404).send({ error: 'User not found' });
-                }
-                
-                const userData = {
-                    email: user.email,
-                    role: user.role
-                }
-                
-                const accessToken = jwt.sign(
-                    userData,
-                    process.env.ACCESS_TOKEN_SECRET,
-                    {expiresIn: '1d'}
-                )
-                
-                res.json({token: accessToken, role: userData.role})
-            } catch (error) {
-                console.error('Error generating JWT:', error);
-                res.status(400).json({ error: 'Failed to generate token' });
-            }
-        });
-
-        // ==================== User Routes ====================
-        app.post('/users', async (req, res) => {
-            try {
-                const { name, email, photo, role } = req.body;
-                
-                if (!email || !email.includes('@')) {
-                    return res.status(400).send({ error: 'Valid email is required' });
-                }
-
-                const filter = { email };
-                const updateDoc = {
-                    $set: {
-                        name,
-                        photo,
-                        role: role || 'user',
-                        createdAt: new Date()
-                    }
-                };
-                const options = { upsert: true };
-
-                const result = await userCollection.updateOne(filter, updateDoc, options);
-                res.status(200).send(result);
-            } catch (error) {
-                console.error('Error saving user:', error);
-                res.status(500).send({ error: 'Failed to save user' });
-            }
-        });
-
-        app.get('/users/:email', async (req, res) => {
-            try {
-                const email = req.params.email;
-                const user = await userCollection.findOne({ email });
-                if (!user) {
-                    return res.status(404).send({ error: 'User not found' });
-                }
-                res.send(user);
-            } catch (error) {
-                console.error('Error fetching user:', error);
-                res.status(500).send({ error: 'Internal Server Error' });
-            }
-        });
-
-        // ==================== Apartment Routes ====================
-        app.get('/apartments', async (req, res) => {
-            try {
-                const apartments = await apartmentCollection.find().toArray();
-                res.send(apartments);
-            } catch (error) {
-                console.error('Error fetching apartments:', error);
-                res.status(500).send({ error: 'Internal Server Error' });
-            }
-        });
-
-        app.get('/apartments/:id', async (req, res) => {
-            try {
-                const id = req.params.id;
-                if (!ObjectId.isValid(id)) {
-                    return res.status(400).send({ error: 'Invalid apartment ID' });
-                }
-                
-                const apartment = await apartmentCollection.findOne({ _id: new ObjectId(id) });
-                if (!apartment) {
-                    return res.status(404).send({ error: 'Apartment not found' });
-                }
-                res.send(apartment);
-            } catch (error) {
-                console.error('Error fetching apartment:', error);
-                res.status(500).send({ error: 'Internal Server Error' });
-            }
-        });
-
-        // ==================== Coupon Routes ====================
-        app.get('/coupons', async (req, res) => {
-            try {
-                const coupons = await couponCollection.find().toArray();
-                res.send(coupons);
-            } catch (error) {
-                console.error('Error fetching coupons:', error);
-                res.status(500).send({ error: 'Internal Server Error' });
-            }
-        });
-
-        app.get('/coupons/:id', async (req, res) => {
-            try {
-                const id = req.params.id;
-                if (!ObjectId.isValid(id)) {
-                    return res.status(400).send({ error: 'Invalid apartment ID' });
-                }
-                
-                const coupon = await couponCollection.findOne({ _id: new ObjectId(id) });
-                if (!coupon) {
-                    return res.status(404).send({ error: 'Coupon not found' });
-                }
-                res.send(coupon);
-            } catch (error) {
-                console.error('Error fetching Coupon:', error);
-                res.status(500).send({ error: 'Internal Server Error' });
-            }
-        });
-
-        app.post('/coupons', verifyJWT, verifyRole('admin'), async (req, res) => {
-            try {
-                const coupon = req.body;
-                const result = await couponCollection.insertOne(coupon);
-                res.status(201).send(result);
-            } catch (error) {
-                console.error('Error creating coupon:', error);
-                res.status(500).send({ error: 'Internal Server Error' });
-            }
-        });
-
-        app.patch('/coupons/:id', verifyJWT, verifyRole('admin'), async (req, res) => {
-            try {
-                const id = req.params.id;
-                const { status } = req.body;
-                
-                if (!ObjectId.isValid(id)) {
-                    return res.status(400).send({ error: 'Invalid coupon ID' });
-                }
-
-                const result = await couponCollection.updateOne(
-                    { _id: new ObjectId(id) },
-                    { $set: { status } }
-                );
-
-                if (result.modifiedCount === 0) {
-                    return res.status(404).send({ error: 'Coupon not found' });
-                }
-
-                res.send({ 
-                message: 'Coupon status updated successfully',
-                updatedCoupon: await couponCollection.findOne({ _id: new ObjectId(id) })
-            });
-            } catch (error) {
-                console.error('Error updating coupon:', error);
-                res.status(500).send({ error: 'Internal Server Error' });
-            }
-        });
-
-
-        app.delete('/coupons/:id', verifyJWT, verifyRole('admin'), async (req, res) => {
-            try {
-                const id = req.params.id;
-                if (!ObjectId.isValid(id)) {
-                    return res.status(400).send({ error: 'Invalid coupon ID' });
-                }
-
-                const result = await couponCollection.deleteOne({ _id: new ObjectId(id) });
-                if (result.deletedCount === 0) {
-                    return res.status(404).send({ error: 'Coupon not found' });
-                }
-
-                res.send({ message: 'Coupon deleted successfully' });
-            } catch (error) {
-                console.error('Error deleting coupon:', error);
-                res.status(500).send({ error: 'Internal Server Error' });
-            }
-        });
-
-        // ==================== Announcement Routes ====================
-        app.get('/announcements', async (req, res) => {
-            try {
-                const announcements = await announcementCollection.find()
-                    .sort({ createdAt: -1 })
-                    .toArray();
-                res.send(announcements);
-            } catch (error) {
-                console.error('Error fetching announcements:', error);
-                res.status(500).send({ error: 'Internal Server Error' });
-            }
-        });
-
-        app.post('/announcements', verifyJWT, verifyRole('admin'), async (req, res) => {
-            try {
-                const announcement = req.body;
-                announcement.createdAt = new Date();
-                const result = await announcementCollection.insertOne(announcement);
-                res.status(201).send(result);
-            } catch (error) {
-                console.error('Error creating announcement:', error);
-                res.status(500).send({ error: 'Internal Server Error' });
-            }
-        });
-        
-        app.put('/announcements/:id', verifyJWT, verifyRole('admin'), async (req, res) => {
-            try {
-                const { id } = req.params;
-                const updateData = req.body;
-                
-                // You might want to add validation here
-                
-                const result = await announcementCollection.updateOne(
-                    { _id: new ObjectId(id) },
-                    { $set: updateData }
-                );
-                
-                if (result.matchedCount === 0) {
-                    return res.status(404).send({ error: 'Announcement not found' });
-                }
-                
-                res.send({ success: true, message: 'Announcement updated' });
-            } catch (error) {
-                console.error('Error updating announcement:', error);
-                res.status(500).send({ error: 'Internal Server Error' });
-            }
-        });
+    // Collections
+    const userCollection = client.db("buildingDB").collection("users");
+    const apartmentCollection = client.db("buildingDB").collection("apartments");
+    const couponCollection = client.db("buildingDB").collection("coupons");
+    const announcementCollection = client.db("buildingDB").collection("announcements");
+    const agreementCollection = client.db("buildingDB").collection("agreements");
+    const paymentCollection = client.db("buildingDB").collection("payments");
 
         
-        app.delete('/announcements/:id', verifyJWT, verifyRole('admin'), async (req, res) => {
-            try {
-                const { id } = req.params;
-                
-                const result = await announcementCollection.deleteOne(
-                    { _id: new ObjectId(id) }
-                );
-                
-                if (result.deletedCount === 0) {
-                    return res.status(404).send({ error: 'Announcement not found' });
-                }
-                
-                res.send({ success: true, message: 'Announcement deleted' });
-            } catch (error) {
-                console.error('Error deleting announcement:', error);
-                res.status(500).send({ error: 'Internal Server Error' });
-            }
-        });
-
-        // ==================== Agreement Routes ====================
-        app.get('/agreements', verifyJWT, async (req, res) => {
-            try {
-                const userEmail = req.user.email;
-                const agreements = await agreementCollection.find({ userEmail }).toArray();
-                res.send(agreements);
-            } catch (error) {
-                console.error('Error fetching agreements:', error);
-                res.status(500).send({ error: 'Internal Server Error' });
-            }
-        });
-
-        app.get('/agreements/requests', verifyJWT, verifyRole('admin'), async (req, res) => {
-            try {
-                const requests = await agreementCollection.find({ status: 'pending' }).toArray();
-                res.send(requests);
-            } catch (error) {
-                console.error('Error fetching agreement requests:', error);
-                res.status(500).send({ error: 'Internal Server Error' });
-            }
-        });
-
-        app.post('/agreements', verifyJWT, async (req, res) => {
-            try {
-                const agreement = req.body;
-                agreement.status = 'pending';
-                agreement.createdAt = new Date();
-                const result = await agreementCollection.insertOne(agreement);
-                res.status(201).send(result);
-            } catch (error) {
-                console.error('Error creating agreement:', error);
-                res.status(500).send({ error: 'Internal Server Error' });
-            }
-        });
-
-        app.patch('/agreements/:id', verifyJWT, verifyRole('admin'), async (req, res) => {
-            try {
-                const id = req.params.id;
-                const { status } = req.body;
-                
-                if (!ObjectId.isValid(id)) {
-                    return res.status(400).send({ error: 'Invalid agreement ID' });
-                }
-
-                const agreement = await agreementCollection.findOne({ _id: new ObjectId(id) });
-                if (!agreement) {
-                    return res.status(404).send({ error: 'Agreement not found' });
-                }
-
-                
-                const result = await agreementCollection.updateOne(
-                    { _id: new ObjectId(id) },
-                    { $set: { status } }
-                );
-
-                
-                if (status === 'accepted') {
-                    await userCollection.updateOne(
-                        { email: agreement.userEmail },
-                        { $set: { role: 'member' } }
-                    );
-                }
-
-                res.send({ message: 'Agreement updated successfully' });
-            } catch (error) {
-                console.error('Error updating agreement:', error);
-                res.status(500).send({ error: 'Internal Server Error' });
-            }
-        });
-
-        // ==================== Payment Routes ====================
-        app.get('/payments', verifyJWT, async (req, res) => {
-            try {
-                const memberEmail = req.user.email;
-                const payments = await paymentCollection.find({ memberEmail }).toArray();
-                res.send(payments);
-            } catch (error) {
-                console.error('Error fetching payments:', error);
-                res.status(500).send({ error: 'Internal Server Error' });
-            }
-        });
-
-
-        app.post('/payments', verifyJWT, async (req, res) => {
-            try {
-                const payment = req.body;
-                payment.createdAt = new Date();
-                payment.status = 'completed';
-                const result = await paymentCollection.insertOne(payment);
-                res.status(201).send(result);
-            } catch (error) {
-                console.error('Error creating payment:', error);
-                res.status(500).send({ error: 'Internal Server Error' });
-            }
-        });
-
-        // ==================== Admin Routes ====================
-        app.get('/admin/users', verifyJWT, verifyRole('admin'), async (req, res) => {
-            try {
-                const users = await userCollection.find().toArray();
-                res.send(users);
-            } catch (error) {
-                console.error('Error fetching users:', error);
-                res.status(500).send({ error: 'Internal Server Error' });
-            }
-        });
-
-        app.patch('/admin/users/:email', verifyJWT, verifyRole('admin'), async (req, res) => {
-            try {
-                const email = req.params.email;
-                const { role } = req.body;
-
-                const result = await userCollection.updateOne(
-                    { email },
-                    { $set: { role } }
-                );
-
-                if (result.modifiedCount === 0) {
-                    return res.status(404).send({ error: 'User not found' });
-                }
-
-                res.send({ message: 'User role updated successfully' });
-            } catch (error) {
-                console.error('Error updating user:', error);
-                res.status(500).send({ error: 'Internal Server Error' });
-            }
-        });
-
-        app.get('/admin/stats', verifyJWT, verifyRole('admin'), async (req, res) => {
-            try {
-                const [
-                    totalRooms,
-                    availableRooms,
-                    totalUsers,
-                    totalMembers
-                ] = await Promise.all([
-                    apartmentCollection.countDocuments(),
-                    apartmentCollection.countDocuments({ status: 'available' }),
-                    userCollection.countDocuments({ role: 'user' }),
-                    userCollection.countDocuments({ role: 'member' })
-                ]);
-
-                
-                const availablePercentage = totalRooms > 0 
-                    ? (availableRooms / totalRooms) * 100 
-                    : 0;
-                const occupiedPercentage = totalRooms > 0 
-                    ? ((totalRooms - availableRooms) / totalRooms) * 100 
-                    : 0;
-
-                res.send({
-                    success: true,
-                    data: {
-                        totalRooms,
-                        availableRoomsPercentage: availablePercentage,
-                        occupiedRoomsPercentage: occupiedPercentage,
-                        totalUsers,
-                        totalMembers
-                    }
-                });
-            } catch (error) {
-                console.error('Error fetching stats:', error);
-                res.status(500).send({ 
-                    success: false,
-                    error: 'Internal Server Error',
-                    message: 'Failed to retrieve admin statistics'
-                });
-            }
-        });
-
-        
-        app.get('/', (req, res) => {
-            res.send('Building Management System server is running');
-        });
-
-    } catch (error) {
-        console.error('Server startup error:', error);
+    const couponCount = await couponCollection.estimatedDocumentCount();
+    if (couponCount === 0) {
+    await couponCollection.insertMany(coupons);
+    console.log('Coupons seeded');
     }
-}
 
+    const apartmentCount = await apartmentCollection.estimatedDocumentCount();
+    if (apartmentCount === 0) {
+    await apartmentCollection.insertMany(apartments);
+    console.log('Apartments seeded');
+    }
+
+    // JWT related API
+    app.post('/jwt', async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
+      res.send({ token });
+    });
+
+    // Middlewares
+    const verifyToken = (req, res, next) => {
+      if (!req.headers.authorization) {
+        return res.status(401).send({ message: 'Unauthorized access' });
+      }
+      const token = req.headers.authorization.split(' ')[1];
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+          return res.status(401).send({ message: 'Unauthorized access' });
+        }
+        req.decoded = decoded;
+        next();
+      });
+    };
+
+    // Verify admin after verifyToken
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      const isAdmin = user?.role === 'admin';
+      if (!isAdmin) {
+        return res.status(403).send({ message: 'Forbidden access' });
+      }
+      next();
+    };
+
+    // Verify member after verifyToken
+    const verifyMember = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      const isMember = user?.role === 'member';
+      if (!isMember) {
+        return res.status(403).send({ message: 'Forbidden access' });
+      }
+      next();
+    };
+
+    // Users related API
+    app.get('/users', verifyToken, verifyAdmin, async (req, res) => {
+      const result = await userCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get('/users/admin/:email', verifyToken, async (req, res) => {
+      const email = req.params.email;
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: 'Forbidden access' });
+      }
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      let admin = false;
+      if (user) {
+        admin = user?.role === 'admin';
+      }
+      res.send({ admin });
+    });
+
+    app.get('/users/member/:email', verifyToken, async (req, res) => {
+      const email = req.params.email;
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: 'Forbidden access' });
+      }
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      let member = false;
+      if (user) {
+        member = user?.role === 'member';
+      }
+      res.send({ member });
+    });
+
+    app.post('/users', async (req, res) => {
+      const user = req.body;
+      const query = { email: user.email };
+      const existingUser = await userCollection.findOne(query);
+      if (existingUser) {
+        return res.send({ message: 'User already exists', insertedId: null });
+      }
+      const result = await userCollection.insertOne(user);
+      res.send(result);
+    });
+
+    app.patch('/users/admin/:id', verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          role: 'admin'
+        }
+      };
+      const result = await userCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    app.patch('/users/member/:id', verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          role: 'member'
+        }
+      };
+      const result = await userCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    app.delete('/users/:id', verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await userCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    // Apartments related API
+    app.get('/apartments', async (req, res) => {
+      const result = await apartmentCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get('/apartments/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await apartmentCollection.findOne(query);
+      res.send(result);
+    });
+
+    app.post('/apartments', verifyToken, verifyAdmin, async (req, res) => {
+      const apartment = req.body;
+      const result = await apartmentCollection.insertOne(apartment);
+      res.send(result);
+    });
+
+    app.patch('/apartments/:id', verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: req.body
+      };
+      const result = await apartmentCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    app.delete('/apartments/:id', verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await apartmentCollection.deleteOne(query);
+      res.send(result);
+    });
+
+
+
+    //Coupon Routes
+    app.post('/coupons', verifyToken, verifyAdmin, async (req, res) => {
+    try {
+        const coupon = req.body;
+        coupon.createdAt = new Date();
+        coupon.status = 'active'; // default status
+        
+        // Validate coupon data
+        if (!coupon.code || !coupon.discount || !coupon.expiryDate) {
+        return res.status(400).send({ error: 'Missing required coupon fields' });
+        }
+
+        // Check if coupon code already exists
+        const existingCoupon = await couponCollection.findOne({ code: coupon.code });
+        if (existingCoupon) {
+        return res.status(400).send({ error: 'Coupon code already exists' });
+        }
+
+        const result = await couponCollection.insertOne(coupon);
+        res.status(201).send(result);
+    } catch (error) {
+        console.error('Error creating coupon:', error);
+        res.status(500).send({ error: 'Internal Server Error' });
+    }
+    });
+
+    app.get('/coupons', verifyToken, async (req, res) => {
+    try {
+        const coupons = await couponCollection.find().toArray();
+        res.send(coupons);
+    } catch (error) {
+        console.error('Error fetching coupons:', error);
+        res.status(500).send({ error: 'Internal Server Error' });
+    }
+    });
+
+    app.get('/coupons/:id', verifyToken, async (req, res) => {
+    try {
+        const id = req.params.id;
+        if (!ObjectId.isValid(id)) {
+        return res.status(400).send({ error: 'Invalid coupon ID' });
+        }
+        
+        const coupon = await couponCollection.findOne({ _id: new ObjectId(id) });
+        if (!coupon) {
+        return res.status(404).send({ error: 'Coupon not found' });
+        }
+        res.send(coupon);
+    } catch (error) {
+        console.error('Error fetching coupon:', error);
+        res.status(500).send({ error: 'Internal Server Error' });
+    }
+    });
+
+    app.patch('/coupons/:id', verifyToken, verifyAdmin, async (req, res) => {
+    try {
+        const id = req.params.id;
+        const updates = req.body;
+        
+        if (!ObjectId.isValid(id)) {
+        return res.status(400).send({ error: 'Invalid coupon ID' });
+        }
+
+        // Validate updates
+        const allowedUpdates = ['code', 'discount', 'expiryDate', 'description', 'minAmount'];
+        const isValidUpdate = Object.keys(updates).every(update => 
+        allowedUpdates.includes(update)
+        );
+        
+        if (!isValidUpdate) {
+        return res.status(400).send({ error: 'Invalid updates' });
+        }
+
+        const result = await couponCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: updates }
+        );
+
+        if (result.matchedCount === 0) {
+        return res.status(404).send({ error: 'Coupon not found' });
+        }
+
+        res.send({ message: 'Coupon updated successfully' });
+    } catch (error) {
+        console.error('Error updating coupon:', error);
+        res.status(500).send({ error: 'Internal Server Error' });
+    }
+    });
+
+    app.patch('/coupons/:id/status', verifyToken, verifyAdmin, async (req, res) => {
+    try {
+        const id = req.params.id;
+        const { status } = req.body;
+        
+        if (!ObjectId.isValid(id)) {
+        return res.status(400).send({ error: 'Invalid coupon ID' });
+        }
+
+        if (!['active', 'inactive', 'expired'].includes(status)) {
+        return res.status(400).send({ error: 'Invalid status value' });
+        }
+
+        const result = await couponCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { status } }
+        );
+
+        if (result.matchedCount === 0) {
+        return res.status(404).send({ error: 'Coupon not found' });
+        }
+
+        res.send({ message: 'Coupon status updated successfully' });
+    } catch (error) {
+        console.error('Error updating coupon status:', error);
+        res.status(500).send({ error: 'Internal Server Error' });
+    }
+    });
+
+    app.delete('/coupons/:id', verifyToken, verifyAdmin, async (req, res) => {
+    try {
+        const id = req.params.id;
+        if (!ObjectId.isValid(id)) {
+        return res.status(400).send({ error: 'Invalid coupon ID' });
+        }
+
+        const result = await couponCollection.deleteOne({ _id: new ObjectId(id) });
+        if (result.deletedCount === 0) {
+        return res.status(404).send({ error: 'Coupon not found' });
+        }
+
+        res.send({ message: 'Coupon deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting coupon:', error);
+        res.status(500).send({ error: 'Internal Server Error' });
+    }
+    });
+
+    app.post('/coupons/apply', verifyToken, async (req, res) => {
+    try {
+        const { code } = req.body;
+        const email = req.decoded.email;
+
+        if (!code) {
+        return res.status(400).send({ error: 'Coupon code is required' });
+        }
+
+        // Find the coupon
+        const coupon = await couponCollection.findOne({ code });
+        if (!coupon) {
+        return res.status(404).send({ error: 'Coupon not found' });
+        }
+
+        // Check coupon validity
+        const now = new Date();
+        if (coupon.status !== 'active') {
+        return res.status(400).send({ error: 'Coupon is not active' });
+        }
+
+        if (coupon.expiryDate && new Date(coupon.expiryDate) < now) {
+        // Update coupon status to expired
+        await couponCollection.updateOne(
+            { _id: coupon._id },
+            { $set: { status: 'expired' } }
+        );
+        return res.status(400).send({ error: 'Coupon has expired' });
+        }
+
+        // Check if user has already used this coupon
+        const existingPayment = await paymentCollection.findOne({
+        userEmail: email,
+        couponCode: code
+        });
+
+        if (existingPayment && !coupon.reusable) {
+        return res.status(400).send({ error: 'Coupon has already been used' });
+        }
+
+        res.send({
+        valid: true,
+        discount: coupon.discount,
+        couponId: coupon._id,
+        message: 'Coupon applied successfully'
+        });
+    } catch (error) {
+        console.error('Error applying coupon:', error);
+        res.status(500).send({ error: 'Internal Server Error' });
+    }
+    });
+
+    // Announcements related API
+    app.get('/announcements', async (req, res) => {
+      const result = await announcementCollection.find().sort({ date: -1 }).toArray();
+      res.send(result);
+    });
+
+    app.post('/announcements', verifyToken, verifyAdmin, async (req, res) => {
+      const announcement = req.body;
+      announcement.date = new Date();
+      const result = await announcementCollection.insertOne(announcement);
+      res.send(result);
+    });
+
+    app.delete('/announcements/:id', verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await announcementCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    // Agreements related API
+    app.get('/agreements', verifyToken, verifyAdmin, async (req, res) => {
+      const result = await agreementCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get('/agreements/user/:email', verifyToken, async (req, res) => {
+      const email = req.params.email;
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: 'Forbidden access' });
+      }
+      const query = { userEmail: email };
+      const result = await agreementCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    app.post('/agreements', verifyToken, async (req, res) => {
+      const agreement = req.body;
+      agreement.status = 'pending';
+      agreement.date = new Date();
+      const result = await agreementCollection.insertOne(agreement);
+      res.send(result);
+    });
+
+    app.patch('/agreements/:id', verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: req.body
+      };
+      const result = await agreementCollection.updateOne(filter, updatedDoc);
+      
+      // If agreement is accepted, update user role to member
+      if (req.body.status === 'accepted') {
+        const agreement = await agreementCollection.findOne(filter);
+        const userFilter = { email: agreement.userEmail };
+        const userUpdate = {
+          $set: {
+            role: 'member',
+            apartmentId: agreement.apartmentId
+          }
+        };
+        await userCollection.updateOne(userFilter, userUpdate);
+      }
+      
+      res.send(result);
+    });
+
+    // Payments related API
+    app.get('/payments', verifyToken, verifyAdmin, async (req, res) => {
+      const result = await paymentCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get('/payments/user/:email', verifyToken, async (req, res) => {
+      const email = req.params.email;
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: 'Forbidden access' });
+      }
+      const query = { userEmail: email };
+      const result = await paymentCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    app.post('/create-payment-intent', verifyToken, async (req, res) => {
+      const { amount } = req.body;
+      const paymentAmount = parseInt(amount * 100);
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: paymentAmount,
+        currency: 'usd',
+        payment_method_types: ['card']
+      });
+
+      res.send({
+        clientSecret: paymentIntent.client_secret
+      });
+    });
+
+    app.post('/payments', verifyToken, async (req, res) => {
+      const payment = req.body;
+      payment.date = new Date();
+      payment.status = 'completed';
+      const result = await paymentCollection.insertOne(payment);
+      res.send(result);
+    });
+
+
+    // Admin stats
+    app.get('/admin-stats', verifyToken, verifyAdmin, async (req, res) => {
+      const users = await userCollection.estimatedDocumentCount();
+      const members = await userCollection.countDocuments({ role: 'member' });
+      const apartments = await apartmentCollection.estimatedDocumentCount();
+      const availableApartments = await apartmentCollection.countDocuments({ status: 'available' });
+      const payments = await paymentCollection.estimatedDocumentCount();
+      
+      const revenueResult = await paymentCollection.aggregate([
+        {
+          $group: {
+            _id: null,
+            totalRevenue: {
+              $sum: '$amount'
+            }
+          }
+        }
+      ]).toArray();
+
+      const revenue = revenueResult.length > 0 ? revenueResult[0].totalRevenue : 0;
+
+      res.send({
+        users,
+        members,
+        apartments,
+        availableApartments,
+        payments,
+        revenue
+      });
+    });
+
+    // Send a ping to confirm a successful connection
+    // await client.db("admin").command({ ping: 1 });
+    // console.log("Pinged your deployment. You successfully connected to MongoDB!");
+  } finally {
+    // Ensures that the client will close when you finish/error
+    // await client.close();
+  }
+}
 run().catch(console.dir);
 
+app.get('/', (req, res) => {
+  res.send('Building Management Server is running');
+});
+
 app.listen(port, () => {
-    console.log(`Building Management Server is running on port: ${port}`);
+  console.log(`Building Management Server is running on port ${port}`);
 });
