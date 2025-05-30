@@ -3,7 +3,7 @@ const app = express();
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
-
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const port = process.env.PORT || 5000;
 
@@ -16,7 +16,7 @@ const coupons = require('./coupons.json')
 const apartments = require('./apartments.json')
 
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.swu9d.mongodb.net/?retryWrites=true&w=majority`;
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.95qfhdq.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -102,6 +102,43 @@ async function run() {
     // Users related API
     app.get('/users', verifyToken, verifyAdmin, async (req, res) => {
       const result = await userCollection.find().toArray();
+      res.send(result);
+    });
+    app.patch('/users/admin/:id', verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      
+      // Check if the current user is trying to modify themselves
+      const currentUser = await userCollection.findOne({ email: req.decoded.email });
+      if (currentUser._id.toString() === id) {
+        return res.status(403).send({ message: 'You cannot modify your own role' });
+      }
+
+      const updatedDoc = {
+        $set: {
+          role: 'admin'
+        }
+      };
+      const result = await userCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    app.patch('/users/user/:id', verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      
+      // Check if the current user is trying to modify themselves
+      const currentUser = await userCollection.findOne({ email: req.decoded.email });
+      if (currentUser._id.toString() === id) {
+        return res.status(403).send({ message: 'You cannot modify your own role' });
+      }
+
+      const updatedDoc = {
+        $set: {
+          role: 'user'
+        }
+      };
+      const result = await userCollection.updateOne(filter, updatedDoc);
       res.send(result);
     });
 
@@ -393,6 +430,7 @@ async function run() {
         res.send({
         valid: true,
         discount: coupon.discount,
+        type: coupon.type,
         couponId: coupon._id,
         message: 'Coupon applied successfully'
         });
@@ -486,27 +524,71 @@ async function run() {
       res.send(result);
     });
 
-    app.post('/create-payment-intent', verifyToken, async (req, res) => {
-      const { amount } = req.body;
-      const paymentAmount = parseInt(amount * 100);
+    // Update this endpoint to match what frontend expects
+    app.post('/payments/create-intent', verifyToken, async (req, res) => {
+      try {
+        const { amount, metadata } = req.body;
+        const paymentAmount = Math.round(amount);
 
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: paymentAmount,
-        currency: 'usd',
-        payment_method_types: ['card']
-      });
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: paymentAmount,
+          currency: 'usd',
+          payment_method_types: ['card'],
+          metadata: metadata // Include metadata from frontend
+        });
 
-      res.send({
-        clientSecret: paymentIntent.client_secret
-      });
+        res.send({
+          clientSecret: paymentIntent.client_secret,
+          paymentIntentId: paymentIntent.id
+        });
+      } catch (err) {
+        console.error('Error creating payment intent:', err);
+        res.status(500).json({ error: err.message });
+      }
     });
 
     app.post('/payments', verifyToken, async (req, res) => {
-      const payment = req.body;
-      payment.date = new Date();
-      payment.status = 'completed';
-      const result = await paymentCollection.insertOne(payment);
-      res.send(result);
+      try {
+        const payment = req.body;
+        payment.date = new Date();
+        payment.status = 'completed';
+        
+        // Validate required fields
+        if (!payment.memberEmail || !payment.amount || !payment.month) {
+          return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        // Check for duplicate payments
+        const existingPayment = await paymentCollection.findOne({
+          memberEmail: payment.memberEmail,
+          month: payment.month,
+          status: 'completed'
+        });
+
+        if (existingPayment) {
+          return res.status(400).json({ error: 'Payment for this month already exists' });
+        }
+
+        const result = await paymentCollection.insertOne(payment);
+        
+        // Update agreement with last payment
+        if (payment.agreementId) {
+          await agreementCollection.updateOne(
+            { _id: new ObjectId(payment.agreementId) },
+            { 
+              $set: { 
+                lastPaymentDate: new Date(),
+                lastPaymentMonth: payment.month
+              } 
+            }
+          );
+        }
+
+        res.status(201).json(result.ops[0]);
+      } catch (err) {
+        console.error('Error saving payment:', err);
+        res.status(500).json({ error: err.message });
+      }
     });
 
 
