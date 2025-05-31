@@ -3,7 +3,6 @@ const app = express();
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const port = process.env.PORT || 5000;
 
@@ -12,7 +11,7 @@ app.use(cors());
 app.use(express.json());
 
 
-const coupons = require('./coupons.json')
+const couponsFromJson = require('./coupons.json')
 const apartments = require('./apartments.json')
 
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
@@ -30,7 +29,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server
-    // await client.connect();
+     await client.connect();
 
     // Collections
     const userCollection = client.db("buildingDB").collection("users");
@@ -43,7 +42,7 @@ async function run() {
         
     const couponCount = await couponCollection.estimatedDocumentCount();
     if (couponCount === 0) {
-    await couponCollection.insertMany(coupons);
+    await couponCollection.insertMany(couponsFromJson);
     console.log('Coupons seeded');
     }
 
@@ -104,11 +103,20 @@ async function run() {
       const result = await userCollection.find().toArray();
       res.send(result);
     });
+    app.get('/users/:email', async (req, res) => {
+      try {
+        const user = await userCollection.findOne({ email: req.params.email });
+        if (!user) return res.status(404).send('User not found');
+        res.json(user);
+      } catch (error) {
+        res.status(500).send('Server error');
+      }
+    });
+    
     app.patch('/users/admin/:id', verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       
-      // Check if the current user is trying to modify themselves
       const currentUser = await userCollection.findOne({ email: req.decoded.email });
       if (currentUser._id.toString() === id) {
         return res.status(403).send({ message: 'You cannot modify your own role' });
@@ -124,22 +132,32 @@ async function run() {
     });
 
     app.patch('/users/user/:id', verifyToken, verifyAdmin, async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      
-      // Check if the current user is trying to modify themselves
-      const currentUser = await userCollection.findOne({ email: req.decoded.email });
-      if (currentUser._id.toString() === id) {
-        return res.status(403).send({ message: 'You cannot modify your own role' });
-      }
-
-      const updatedDoc = {
-        $set: {
-          role: 'user'
+      try {
+        const id = req.params.id;
+        
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).send({ message: 'Invalid user ID' });
         }
-      };
-      const result = await userCollection.updateOne(filter, updatedDoc);
-      res.send(result);
+
+        const filter = { _id: new ObjectId(id) };
+        
+        // Check if the current user is trying to modify themselves
+        const currentUser = await userCollection.findOne({ email: req.decoded.email });
+        if (currentUser._id.equals(new ObjectId(id))) {
+          return res.status(403).send({ message: 'You cannot modify your own role' });
+        }
+
+        const updatedDoc = {
+          $set: {
+            role: 'user'
+          }
+        };
+        const result = await userCollection.updateOne(filter, updatedDoc);
+        res.send(result);
+      } catch (error) {
+        console.error('Error updating role:', error);
+        res.status(500).send({ message: 'Internal server error' });
+      }
     });
 
     app.get('/users/admin/:email', verifyToken, async (req, res) => {
@@ -183,7 +201,14 @@ async function run() {
 
     app.patch('/users/admin/:id', verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
+      if(!ObjectId.isValid(id)){
+        return res.status(400).send({message: 'Invalid user ID'});
+      }
       const filter = { _id: new ObjectId(id) };
+      const currentUser = await userCollection.findOne({email: req.decoded.email});
+      if(currentUser._id.equals(new ObjectId(id))){
+        return res.status(403).send({message: 'You cannot modify your own role'});
+      }
       const updatedDoc = {
         $set: {
           role: 'admin'
@@ -194,15 +219,32 @@ async function run() {
     });
 
     app.patch('/users/member/:id', verifyToken, verifyAdmin, async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const updatedDoc = {
-        $set: {
-          role: 'member'
+      try {
+        const id = req.params.id;
+        
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).send({ message: 'Invalid user ID' });
         }
-      };
-      const result = await userCollection.updateOne(filter, updatedDoc);
-      res.send(result);
+
+        const filter = { _id: new ObjectId(id) };
+        
+        // Check if the current user is trying to modify themselves
+        const currentUser = await userCollection.findOne({ email: req.decoded.email });
+        if (currentUser._id.equals(new ObjectId(id))) {
+          return res.status(403).send({ message: 'You cannot modify your own role' });
+        }
+
+        const updatedDoc = {
+          $set: {
+            role: 'member'
+          }
+        };
+        const result = await userCollection.updateOne(filter, updatedDoc);
+        res.send(result);
+      } catch (error) {
+        console.error('Error updating role:', error);
+        res.status(500).send({ message: 'Internal server error' });
+      }
     });
 
     app.delete('/users/:id', verifyToken, verifyAdmin, async (req, res) => {
@@ -250,7 +292,7 @@ async function run() {
 
 
 
-    //Coupon Routes
+    //Coupon related API
     app.post('/coupons', verifyToken, verifyAdmin, async (req, res) => {
     try {
         const coupon = req.body;
@@ -452,6 +494,29 @@ async function run() {
       const result = await announcementCollection.insertOne(announcement);
       res.send(result);
     });
+    app.put('/announcements/:id', verifyToken, verifyAdmin, async (req, res) => {
+      try {
+        const id = req.params.id;
+        const updatedData = req.body;
+
+        // Optionally update the date field to now
+        updatedData.date = new Date();
+
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = { $set: updatedData };
+
+        const result = await announcementCollection.updateOne(filter, updateDoc);
+
+        if (result.matchedCount === 0) {
+          return res.status(404).send({ message: 'Announcement not found' });
+        }
+
+        res.send({ message: 'Announcement updated successfully' });
+      } catch (error) {
+        console.error('Error updating announcement:', error);
+        res.status(500).send({ message: 'Internal server error' });
+      }
+    });
 
     app.delete('/announcements/:id', verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
@@ -508,6 +573,39 @@ async function run() {
       res.send(result);
     });
 
+    // Add this to your backend routes (server-side)
+    app.delete('/agreements/:id', verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      
+      // First get the agreement to check permissions
+      const agreement = await agreementCollection.findOne(query);
+      
+      // Only allow deletion if:
+      // 1. User is admin OR
+      // 2. User owns the agreement AND it's still pending
+      if (req.decoded.role !== 'admin' && 
+          (agreement.userEmail !== req.decoded.email || agreement.status !== 'pending')) {
+        return res.status(403).send({ message: 'Forbidden access' });
+      }
+      
+      const result = await agreementCollection.deleteOne(query);
+      
+      // If the agreement was accepted, revert user role if needed
+      if (agreement.status === 'accepted') {
+        const userFilter = { email: agreement.userEmail };
+        const userUpdate = {
+          $set: {
+            role: 'user',
+            apartmentId: null
+          }
+        };
+        await userCollection.updateOne(userFilter, userUpdate);
+      }
+      
+      res.send(result);
+    });
+
     // Payments related API
     app.get('/payments', verifyToken, verifyAdmin, async (req, res) => {
       const result = await paymentCollection.find().toArray();
@@ -515,34 +613,52 @@ async function run() {
     });
 
     app.get('/payments/user/:email', verifyToken, async (req, res) => {
-      const email = req.params.email;
-      if (email !== req.decoded.email) {
-        return res.status(403).send({ message: 'Forbidden access' });
-      }
-      const query = { userEmail: email };
-      const result = await paymentCollection.find(query).toArray();
-      res.send(result);
-    });
-
-    // Update this endpoint to match what frontend expects
-    app.post('/payments/create-intent', verifyToken, async (req, res) => {
       try {
-        const { amount, metadata } = req.body;
-        const paymentAmount = Math.round(amount);
+        const email = req.params.email;
+        const month = req.query.month;
+        
+        const query = { memberEmail: email };
+        if (month) {
+          query.month = month;
+        }
+        
+        const result = await paymentCollection.find(query).toArray();
+        res.send(result);
+      } catch (error) {
+        console.error('Error fetching user payments:', error);
+        res.status(500).send({ message: 'Internal server error' });
+      }
+    });
+    app.post('/payments/request', verifyToken, async (req, res) => {
+      try {
+        const payment = req.body;
+        payment.date = new Date();
+        payment.status = 'pending'; // Manual payments start as pending
+        
+        // Validate required fields
+        if (!payment.memberEmail || !payment.amount || !payment.month || !payment.agreementId) {
+          return res.status(400).json({ error: 'Missing required fields' });
+        }
 
-        const paymentIntent = await stripe.paymentIntents.create({
-          amount: paymentAmount,
-          currency: 'usd',
-          payment_method_types: ['card'],
-          metadata: metadata // Include metadata from frontend
+        // Check for duplicate pending payments for same month
+        const existingPayment = await paymentCollection.findOne({
+          memberEmail: payment.memberEmail,
+          month: payment.month,
+          status: { $in: ['pending', 'completed'] }
         });
 
-        res.send({
-          clientSecret: paymentIntent.client_secret,
-          paymentIntentId: paymentIntent.id
-        });
+        if (existingPayment) {
+          return res.status(400).json({ 
+            error: existingPayment.status === 'pending' 
+              ? 'Pending payment already exists for this month' 
+              : 'Payment for this month already completed'
+          });
+        }
+
+        const result = await paymentCollection.insertOne(payment);
+        res.status(201).json(result.ops[0]);
       } catch (err) {
-        console.error('Error creating payment intent:', err);
+        console.error('Error saving payment request:', err);
         res.status(500).json({ error: err.message });
       }
     });

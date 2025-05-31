@@ -9,7 +9,8 @@
     "status": "active",
     "reusable": true,
     "createdAt": "2025-05-15T10:30:00Z",
-    "createdBy": "admin1@example.com"
+    "createdBy": "admin1@example.com",
+    "applicableFor": "all users"
   },
   {
     "code": "WELCOME50",
@@ -21,7 +22,8 @@
     "status": "active",
     "reusable": false,
     "createdAt": "2025-04-20T09:15:00Z",
-    "createdBy": "admin2@example.com"
+    "createdBy": "admin2@example.com",
+    "applicableFor": "new users"
   },
   {
     "code": "FREESHIP",
@@ -33,7 +35,8 @@
     "status": "active",
     "reusable": true,
     "createdAt": "2025-03-05T14:00:00Z",
-    "createdBy": "admin1@example.com"
+    "createdBy": "admin1@example.com",
+    "applicableFor": "returning customers"
   },
   {
     "code": "BLACKFRIDAY30",
@@ -45,7 +48,8 @@
     "status": "active",
     "reusable": false,
     "createdAt": "2025-05-01T12:00:00Z",
-    "createdBy": "admin3@example.com"
+    "createdBy": "admin3@example.com",
+    "applicableFor": "all users"
   },
   {
     "code": "EXPIRED10",
@@ -57,7 +61,8 @@
     "status": "expired",
     "reusable": false,
     "createdAt": "2024-01-01T08:00:00Z",
-    "createdBy": "admin4@example.com"
+    "createdBy": "admin4@example.com",
+    "applicableFor": "loyal customers"
   },
   {
     "code": "INACTIVE25",
@@ -69,7 +74,8 @@
     "status": "inactive",
     "reusable": true,
     "createdAt": "2025-02-10T11:45:00Z",
-    "createdBy": "admin2@example.com"
+    "createdBy": "admin2@example.com",
+    "applicableFor": "all users"
   },
   {
     "code": "FALL15",
@@ -81,7 +87,8 @@
     "status": "active",
     "reusable": true,
     "createdAt": "2025-05-10T16:30:00Z",
-    "createdBy": "admin1@example.com"
+    "createdBy": "admin1@example.com",
+    "applicableFor": "loyal customers"
   },
   {
     "code": "VIP100",
@@ -93,6 +100,7 @@
     "status": "active",
     "reusable": false,
     "createdAt": "2025-05-25T10:00:00Z",
-    "createdBy": "admin3@example.com"
+    "createdBy": "admin3@example.com",
+    "applicableFor": "VIP members"
   }
 ]
