@@ -10,11 +10,17 @@ const port = process.env.PORT || 5000;
 app.use(cors({
   origin: [
     'https://home-haven-8d2d8.web.app',
-    'http://localhost:5173'
-  ]
+    'http://localhost:5173',
+    'https://home-haven-8d2d8.firebaseapp.com'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 }));
 app.use(express.json());
-
+app.use((req, res, next) => {
+  console.log(`Incoming request: ${req.method} ${req.path}`);
+  next();
+});
 
 const couponsFromJson = require('./coupons.json')
 const apartments = require('./apartments.json')
@@ -34,7 +40,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server
-    //  await client.connect();
+    client.connect();
 
     // Collections
     const userCollection = client.db("buildingDB").collection("users");
