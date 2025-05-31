@@ -7,7 +7,12 @@ require('dotenv').config();
 const port = process.env.PORT || 5000;
 
 // middleware
-app.use(cors());
+app.use(cors({
+  origin: [
+    'https://home-haven-8d2d8.web.app',
+    'http://localhost:5173'
+  ]
+}));
 app.use(express.json());
 
 
