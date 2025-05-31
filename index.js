@@ -112,24 +112,6 @@ async function run() {
         res.status(500).send('Server error');
       }
     });
-    
-    app.patch('/users/admin/:id', verifyToken, verifyAdmin, async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      
-      const currentUser = await userCollection.findOne({ email: req.decoded.email });
-      if (currentUser._id.toString() === id) {
-        return res.status(403).send({ message: 'You cannot modify your own role' });
-      }
-
-      const updatedDoc = {
-        $set: {
-          role: 'admin'
-        }
-      };
-      const result = await userCollection.updateOne(filter, updatedDoc);
-      res.send(result);
-    });
 
     app.patch('/users/user/:id', verifyToken, verifyAdmin, async (req, res) => {
       try {
