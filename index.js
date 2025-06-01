@@ -1,17 +1,16 @@
+console.log('Starting server with these environment variables:');
+console.log({
+  DB_USER: process.env.DB_USER ? '*****' : 'MISSING',
+  DB_PASS: process.env.DB_PASS ? '*****' : 'MISSING',
+  NODE_ENV: process.env.NODE_ENV || 'development'
+});
+
 const express = require('express');
 const app = express();
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-const client = new MongoClient(uri, {
-  serverApi: {
-    version: ServerApiVersion.v1,
-    strict: true,
-    deprecationErrors: true,
-  },
-  
-});
 const port = process.env.PORT || 5000;
 
 // middleware
@@ -22,7 +21,6 @@ app.use(cors({
     'https://home-haven-8d2d8.firebaseapp.com'
   ],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 }));
 app.use(express.json());
 app.use((req, res, next) => {
@@ -34,15 +32,22 @@ const couponsFromJson = require('./coupons.json')
 const apartments = require('./apartments.json')
 
 
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.95qfhdq.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
-
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.95qfhdq.mongodb.net/buildingDB?retryWrites=true&w=majority&socketTimeoutMS=30000&connectTimeoutMS=30000&maxPoolSize=20&minPoolSize=5`;
+const client = new MongoClient(uri, {
+  serverApi: {
+    version: ServerApiVersion.v1,
+    strict: true,
+    deprecationErrors: true,
+  },
+  
+});
 
 
 
 async function run() {
   try {
     // Connect the client to the server
-    //await client.connect();
+     client.connect();
 
     // Collections
     const userCollection = client.db("buildingDB").collection("users");
@@ -99,17 +104,6 @@ async function run() {
       next();
     };
 
-    // Verify member after verifyToken
-    const verifyMember = async (req, res, next) => {
-      const email = req.decoded.email;
-      const query = { email: email };
-      const user = await userCollection.findOne(query);
-      const isMember = user?.role === 'member';
-      if (!isMember) {
-        return res.status(403).send({ message: 'Forbidden access' });
-      }
-      next();
-    };
 
     // Users related API
     app.get('/users', verifyToken, verifyAdmin, async (req, res) => {
@@ -251,9 +245,14 @@ async function run() {
 
     // Apartments related API
     app.get('/apartments', async (req, res) => {
-      const result = await apartmentCollection.find().toArray();
-      res.send(result);
-      console.log(result.length);
+      try {
+        const result = await apartmentCollection.find().toArray();
+        console.log('Found apartments:', result.length);
+        res.send(result);
+      } catch (error) {
+        console.error('Error fetching apartments:', error);
+        res.status(500).send({ error: 'Failed to fetch apartments' });
+      }
     });
 
     app.get('/apartments/:id', async (req, res) => {
