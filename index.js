@@ -1,9 +1,4 @@
-console.log('Starting server with these environment variables:');
-console.log({
-  DB_USER: process.env.DB_USER ? '*****' : 'MISSING',
-  DB_PASS: process.env.DB_PASS ? '*****' : 'MISSING',
-  NODE_ENV: process.env.NODE_ENV || 'development'
-});
+
 
 const express = require('express');
 const app = express();
@@ -26,6 +21,16 @@ app.use(express.json());
 app.use((req, res, next) => {
   console.log(`Incoming request: ${req.method} ${req.path}`);
   next();
+});
+
+
+app.get('/env-check', (req, res) => {
+  res.json({
+    DB_USER: process.env.DB_USER || process.env.db_user || 'NOT_FOUND',
+    DB_PASS: process.env.DB_PASS || process.env.db_pass || 'NOT_FOUND',
+    ACCESS_TOKEN_SECRET: process.env.ACCESS_TOKEN_SECRET || 'NOT_FOUND',
+    NODE_ENV: process.env.NODE_ENV || 'development'
+  });
 });
 
 const couponsFromJson = require('./coupons.json')
