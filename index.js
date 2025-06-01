@@ -52,7 +52,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server
-     //client.connect();
+     //await client.connect();
 
     // Collections
     const userCollection = client.db("buildingDB").collection("users");
@@ -75,45 +75,6 @@ async function run() {
     //console.log('Apartments seeded');
     }
 
-
-    app.get('/connection-test', async (req, res) => {
-  let client;
-  try {
-    // Create a new connection instead of using the global client
-    client = new MongoClient(uri, {
-      connectTimeoutMS: 10000,
-      serverSelectionTimeoutMS: 10000,
-      socketTimeoutMS: 20000
-    });
-    
-    //console.log('Attempting connection...');
-    await client.connect();
-    
-    //console.log('Pinging database...');
-    const ping = await client.db("admin").command({ ping: 1 });
-    
-    res.json({
-      success: true,
-      ping,
-      connection: "Successful",
-      stats: {
-        host: client.topology.s.servers.keys().next().value,
-        connectionTime: new Date()
-      }
-    });
-    
-  } catch (err) {
-    //console.error('Connection error:', err);
-    res.status(500).json({
-      success: false,
-      error: err.message,
-      advice: "Check MongoDB Atlas network access",
-      time: new Date()
-    });
-  } finally {
-    if (client) await client.close();
-  }
-});
     // JWT related API
     app.post('/jwt', async (req, res) => {
       const user = req.body;
