@@ -19,7 +19,7 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use((req, res, next) => {
-  console.log(`Incoming request: ${req.method} ${req.path}`);
+  //console.log(`Incoming request: ${req.method} ${req.path}`);
   next();
 });
 
@@ -66,13 +66,13 @@ async function run() {
     const couponCount = await couponCollection.estimatedDocumentCount();
     if (couponCount === 0) {
     await couponCollection.insertMany(couponsFromJson);
-    console.log('Coupons seeded');
+    ////console.log('Coupons seeded');
     }
 
     const apartmentCount = await apartmentCollection.estimatedDocumentCount();
     if (apartmentCount === 0) {
     await apartmentCollection.insertMany(apartments);
-    console.log('Apartments seeded');
+    //console.log('Apartments seeded');
     }
 
 
@@ -86,10 +86,10 @@ async function run() {
       socketTimeoutMS: 20000
     });
     
-    console.log('Attempting connection...');
+    //console.log('Attempting connection...');
     await client.connect();
     
-    console.log('Pinging database...');
+    //console.log('Pinging database...');
     const ping = await client.db("admin").command({ ping: 1 });
     
     res.json({
@@ -103,7 +103,7 @@ async function run() {
     });
     
   } catch (err) {
-    console.error('Connection error:', err);
+    //console.error('Connection error:', err);
     res.status(500).json({
       success: false,
       error: err.message,
@@ -188,7 +188,7 @@ async function run() {
         const result = await userCollection.updateOne(filter, updatedDoc);
         res.send(result);
       } catch (error) {
-        console.error('Error updating role:', error);
+        //console.error('Error updating role:', error);
         res.status(500).send({ message: 'Internal server error' });
       }
     });
@@ -275,7 +275,7 @@ async function run() {
         const result = await userCollection.updateOne(filter, updatedDoc);
         res.send(result);
       } catch (error) {
-        console.error('Error updating role:', error);
+        //console.error('Error updating role:', error);
         res.status(500).send({ message: 'Internal server error' });
       }
     });
@@ -291,10 +291,10 @@ async function run() {
     app.get('/apartments', async (req, res) => {
       try {
         const result = await apartmentCollection.find().toArray();
-        console.log('Found apartments:', result.length);
+        //console.log('Found apartments:', result.length);
         res.send(result);
       } catch (error) {
-        console.error('Error fetching apartments:', error);
+        //console.error('Error fetching apartments:', error);
         res.status(500).send({ error: 'Failed to fetch apartments' });
       }
     });
@@ -352,7 +352,7 @@ async function run() {
         const result = await couponCollection.insertOne(coupon);
         res.status(201).send(result);
     } catch (error) {
-        console.error('Error creating coupon:', error);
+        //console.error('Error creating coupon:', error);
         res.status(500).send({ error: 'Internal Server Error' });
     }
     });
@@ -362,7 +362,7 @@ async function run() {
         const coupons = await couponCollection.find().toArray();
         res.send(coupons);
     } catch (error) {
-        console.error('Error fetching coupons:', error);
+        //console.error('Error fetching coupons:', error);
         res.status(500).send({ error: 'Internal Server Error' });
     }
     });
@@ -380,7 +380,7 @@ async function run() {
         }
         res.send(coupon);
     } catch (error) {
-        console.error('Error fetching coupon:', error);
+        //console.error('Error fetching coupon:', error);
         res.status(500).send({ error: 'Internal Server Error' });
     }
     });
@@ -415,7 +415,7 @@ async function run() {
 
         res.send({ message: 'Coupon updated successfully' });
     } catch (error) {
-        console.error('Error updating coupon:', error);
+        //console.error('Error updating coupon:', error);
         res.status(500).send({ error: 'Internal Server Error' });
     }
     });
@@ -444,7 +444,7 @@ async function run() {
 
         res.send({ message: 'Coupon status updated successfully' });
     } catch (error) {
-        console.error('Error updating coupon status:', error);
+        //console.error('Error updating coupon status:', error);
         res.status(500).send({ error: 'Internal Server Error' });
     }
     });
@@ -463,7 +463,7 @@ async function run() {
 
         res.send({ message: 'Coupon deleted successfully' });
     } catch (error) {
-        console.error('Error deleting coupon:', error);
+        //console.error('Error deleting coupon:', error);
         res.status(500).send({ error: 'Internal Server Error' });
     }
     });
@@ -516,7 +516,7 @@ async function run() {
         message: 'Coupon applied successfully'
         });
     } catch (error) {
-        console.error('Error applying coupon:', error);
+        //console.error('Error applying coupon:', error);
         res.status(500).send({ error: 'Internal Server Error' });
     }
     });
@@ -552,7 +552,7 @@ async function run() {
 
         res.send({ message: 'Announcement updated successfully' });
       } catch (error) {
-        console.error('Error updating announcement:', error);
+        //console.error('Error updating announcement:', error);
         res.status(500).send({ message: 'Internal server error' });
       }
     });
@@ -664,7 +664,7 @@ async function run() {
         const result = await paymentCollection.find(query).toArray();
         res.send(result);
       } catch (error) {
-        console.error('Error fetching user payments:', error);
+        //console.error('Error fetching user payments:', error);
         res.status(500).send({ message: 'Internal server error' });
       }
     });
@@ -697,7 +697,7 @@ async function run() {
         const result = await paymentCollection.insertOne(payment);
         res.status(201).json(result.ops[0]);
       } catch (err) {
-        console.error('Error saving payment request:', err);
+        //console.error('Error saving payment request:', err);
         res.status(500).json({ error: err.message });
       }
     });
@@ -741,7 +741,7 @@ async function run() {
 
         res.status(201).json(result.ops[0]);
       } catch (err) {
-        console.error('Error saving payment:', err);
+        //console.error('Error saving payment:', err);
         res.status(500).json({ error: err.message });
       }
     });
@@ -780,18 +780,20 @@ async function run() {
 
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
-    // console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    // //console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
   }
 }
-run().catch(console.dir);
+run().catch({
+  //console.dir
+  });
 
 app.get('/', (req, res) => {
   res.send('Building Management Server is running');
 });
 
 app.listen(port, () => {
-  console.log(`Building Management Server is running on port ${port}`);
+  //console.log(`Building Management Server is running on port ${port}`);
 });
