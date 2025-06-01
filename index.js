@@ -40,7 +40,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server
-    client.connect();
+    //await client.connect();
 
     // Collections
     const userCollection = client.db("buildingDB").collection("users");
@@ -251,6 +251,7 @@ async function run() {
     app.get('/apartments', async (req, res) => {
       const result = await apartmentCollection.find().toArray();
       res.send(result);
+      console.log(result.length);
     });
 
     app.get('/apartments/:id', async (req, res) => {
