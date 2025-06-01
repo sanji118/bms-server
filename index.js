@@ -32,7 +32,7 @@ const couponsFromJson = require('./coupons.json')
 const apartments = require('./apartments.json')
 
 
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.95qfhdq.mongodb.net/buildingDB?retryWrites=true&w=majority&socketTimeoutMS=30000&connectTimeoutMS=30000&maxPoolSize=20&minPoolSize=5`;
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.95qfhdq.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -47,7 +47,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server
-     client.connect();
+     //client.connect();
 
     // Collections
     const userCollection = client.db("buildingDB").collection("users");
