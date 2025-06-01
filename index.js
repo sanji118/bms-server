@@ -24,14 +24,7 @@ app.use((req, res, next) => {
 });
 
 
-app.get('/env-check', (req, res) => {
-  res.json({
-    DB_USER: process.env.DB_USER || process.env.db_user || 'NOT_FOUND',
-    DB_PASS: process.env.DB_PASS || process.env.db_pass || 'NOT_FOUND',
-    ACCESS_TOKEN_SECRET: process.env.ACCESS_TOKEN_SECRET || 'NOT_FOUND',
-    NODE_ENV: process.env.NODE_ENV || 'development'
-  });
-});
+
 
 const couponsFromJson = require('./coupons.json')
 const apartments = require('./apartments.json')
@@ -52,7 +45,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server
-     //await client.connect();
+     await client.connect();
 
     // Collections
     const userCollection = client.db("buildingDB").collection("users");
