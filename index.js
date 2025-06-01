@@ -786,14 +786,12 @@ async function run() {
     // await client.close();
   }
 }
-run().catch({
-  //console.dir
-  });
+run().catch(console.dir);
 
 app.get('/', (req, res) => {
   res.send('Building Management Server is running');
 });
 
 app.listen(port, () => {
-  //console.log(`Building Management Server is running on port ${port}`);
+  console.log(`Building Management Server is running on port ${port}`);
 });
