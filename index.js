@@ -747,6 +747,6 @@ app.get('/', (req, res) => {
   res.send('Building Management Server is running');
 });
 
-app.listen(port, () => {
-  console.log(`Building Management Server is running on port ${port}`);
+app.listen(process.env.PORT || 5000, () => {
+  console.log(`Building Management Server is running on port ${process.env.PORT ||5000}`);
 });
