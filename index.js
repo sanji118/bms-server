@@ -34,7 +34,10 @@ const client = new MongoClient(uri, {
     version: ServerApiVersion.v1,
     strict: true,
     deprecationErrors: true,
-  }
+  },
+  connectTimeoutMS: 5000,
+  socketTimeoutMS: 30000,
+  maxPoolSize: 1
 });
 
 async function run() {
