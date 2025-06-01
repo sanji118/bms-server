@@ -75,6 +75,23 @@ async function run() {
     console.log('Apartments seeded');
     }
 
+
+    app.get('/connection-test', async (req, res) => {
+  try {
+    const conn = await MongoClient.connect(uri, {
+      connectTimeoutMS: 5000,
+      socketTimeoutMS: 30000
+    });
+    const ping = await conn.db("admin").command({ ping: 1 });
+    res.json({ success: true, ping });
+  } catch (err) {
+    res.status(500).json({
+      error: err.message,
+      uri: uri.substring(0, 30) + '...' // Don't expose full URI
+    });
+  }
+});
+
     // JWT related API
     app.post('/jwt', async (req, res) => {
       const user = req.body;
